@@ -1,0 +1,211 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local ESP = {Enabled = true, Objects = {}}
+
+local Theme = {
+    Bg = Color3.fromRGB(10, 10, 12),
+    BgTransparency = 0.3,
+    Accent = Color3.fromRGB(59, 130, 246),
+    Text = Color3.fromRGB(245, 245, 247),
+    TextDim = Color3.fromRGB(140, 140, 150),
+    HealthHigh = Color3.fromRGB(46, 204, 113),
+    HealthMid = Color3.fromRGB(241, 196, 15),
+    HealthLow = Color3.fromRGB(231, 76, 60),
+    Outline = Color3.fromRGB(28, 28, 32)
+}
+
+local Config = {
+    ToggleKey = Enum.KeyCode.H,
+    MaxDistance = 500,
+    ShowNames = true,
+    ShowBoxes = true,
+    AlwaysOnTop = true
+}
+
+local function CreateESP(player)
+    local char = player.Character
+    if not char then return end
+    
+    local data = ESP.Objects[player] or {}
+    local head = char:FindFirstChild("Head")
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    
+    if Config.ShowBoxes and not data.Highlight then
+        local h = Instance.new("Highlight")
+        h.Name = "Onyx_H"
+        h.FillColor = Theme.Accent
+        h.OutlineColor = Theme.Accent
+        h.FillTransparency = 0.7
+        h.OutlineTransparency = 0
+        h.DepthMode = Config.AlwaysOnTop and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+        h.Parent = char
+        data.Highlight = h
+    end
+    
+    if Config.ShowNames and not data.NameTag and head then
+        local gui = Instance.new("BillboardGui")
+        gui.Name = "Onyx_N"
+        gui.Adornee = head
+        gui.Size = UDim2.new(0, 90, 0, 36)
+        gui.StudsOffset = Vector3.new(0, 3, 0)
+        gui.AlwaysOnTop = Config.AlwaysOnTop
+        gui.Parent = head
+        
+        local bg = Instance.new("Frame")
+        bg.Size = UDim2.new(1, 0, 1, 0)
+        bg.BackgroundColor3 = Theme.Bg
+        bg.BackgroundTransparency = Theme.BgTransparency
+        bg.BorderSizePixel = 0
+        bg.Parent = gui
+        Instance.new("UICorner", bg).CornerRadius = UDim.new(0, 6)
+        Instance.new("UIStroke", bg).Color = Theme.Outline
+        
+        local accentLine = Instance.new("Frame")
+        accentLine.Size = UDim2.new(0.35, 0, 0, 2)
+        accentLine.Position = UDim2.new(0.325, 0, 0, 0)
+        accentLine.BackgroundColor3 = Theme.Accent
+        accentLine.BorderSizePixel = 0
+        accentLine.Parent = bg
+        Instance.new("UICorner", accentLine).CornerRadius = UDim.new(0, 1)
+        
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Size = UDim2.new(1, -6, 0, 14)
+        nameLbl.Position = UDim2.new(0, 3, 0, 5)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text = player.DisplayName
+        nameLbl.TextColor3 = Theme.Text
+        nameLbl.TextSize = 11
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextStrokeTransparency = 0.5
+        nameLbl.Parent = bg
+        
+        local distLbl = Instance.new("TextLabel")
+        distLbl.Size = UDim2.new(1, -6, 0, 10)
+        distLbl.Position = UDim2.new(0, 3, 0, 19)
+        distLbl.BackgroundTransparency = 1
+        distLbl.Text = "0m"
+        distLbl.TextColor3 = Theme.TextDim
+        distLbl.TextSize = 9
+        distLbl.Font = Enum.Font.GothamMedium
+        distLbl.Parent = bg
+        
+        local hpBg = Instance.new("Frame")
+        hpBg.Size = UDim2.new(1, -6, 0, 2)
+        hpBg.Position = UDim2.new(0, 3, 1, -5)
+        hpBg.BackgroundColor3 = Color3.fromRGB(25, 25, 28)
+        hpBg.BorderSizePixel = 0
+        hpBg.Parent = bg
+        Instance.new("UICorner", hpBg).CornerRadius = UDim.new(0, 1)
+        
+        local hpFill = Instance.new("Frame")
+        hpFill.Size = UDim2.new(1, 0, 1, 0)
+        hpFill.BackgroundColor3 = Theme.HealthHigh
+        hpFill.BorderSizePixel = 0
+        hpFill.Parent = hpBg
+        Instance.new("UICorner", hpFill).CornerRadius = UDim.new(0, 1)
+        
+        data.NameTag = gui
+        data.NameLbl = nameLbl
+        data.DistLbl = distLbl
+        data.HpFill = hpFill
+        data.Humanoid = hum
+    end
+    
+    ESP.Objects[player] = data
+end
+
+local function RemoveESP(player)
+    local data = ESP.Objects[player]
+    if data then
+        if data.Highlight then data.Highlight:Destroy() end
+        if data.NameTag then data.NameTag:Destroy() end
+        ESP.Objects[player] = nil
+    end
+end
+
+local function UpdateESP()
+    local lChar = LocalPlayer.Character
+    local lRoot = lChar and lChar:FindFirstChild("HumanoidRootPart")
+    
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer then
+            local pChar = p.Character
+            local pRoot = pChar and pChar:FindFirstChild("HumanoidRootPart")
+            local hum = pChar and pChar:FindFirstChildOfClass("Humanoid")
+            
+            if pRoot and lRoot then
+                local dist = (pRoot.Position - lRoot.Position).Magnitude
+                local inRange = dist <= Config.MaxDistance
+                
+                if ESP.Enabled and inRange then
+                    if not ESP.Objects[p] then CreateESP(p) end
+                    
+                    local d = ESP.Objects[p]
+                    if d then
+                        if d.Highlight then
+                            d.Highlight.Enabled = true
+                            d.Highlight.FillColor = Theme.Accent
+                            d.Highlight.OutlineColor = Theme.Accent
+                        end
+                        
+                        if d.NameTag and d.DistLbl and d.HpFill then
+                            d.NameTag.Enabled = true
+                            d.DistLbl.Text = math.floor(dist) .. "m"
+                            
+                            if hum and hum.Health then
+                                local hpPercent = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                                d.HpFill.Size = UDim2.new(hpPercent, 0, 1, 0)
+                                
+                                if hpPercent > 0.6 then
+                                    d.HpFill.BackgroundColor3 = Theme.HealthHigh
+                                elseif hpPercent > 0.3 then
+                                    d.HpFill.BackgroundColor3 = Theme.HealthMid
+                                else
+                                    d.HpFill.BackgroundColor3 = Theme.HealthLow
+                                end
+                            end
+                        end
+                    end
+                else
+                    if ESP.Objects[p] then
+                        if ESP.Objects[p].Highlight then ESP.Objects[p].Highlight.Enabled = false end
+                        if ESP.Objects[p].NameTag then ESP.Objects[p].NameTag.Enabled = false end
+                    end
+                end
+            end
+        end
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.KeyCode == Config.ToggleKey then
+        ESP.Enabled = not ESP.Enabled
+        if not ESP.Enabled then
+            for p, _ in pairs(ESP.Objects) do 
+                if ESP.Objects[p].Highlight then ESP.Objects[p].Highlight.Enabled = false end
+                if ESP.Objects[p].NameTag then ESP.Objects[p].NameTag.Enabled = false end
+            end
+        end
+    end
+end)
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        if ESP.Enabled then CreateESP(p) end
+    end)
+end)
+
+Players.PlayerRemoving:Connect(RemoveESP)
+
+for _, p in ipairs(Players:GetPlayers()) do
+    if p ~= LocalPlayer and p.Character then
+        CreateESP(p)
+    end
+end
+
+RunService.Heartbeat:Connect(UpdateESP)
