@@ -305,10 +305,10 @@ local function CreateTabButton(name, position, size, active, pageName)
     end)
 end
 
-CreateTabButton("Main", UDim2.new(0, 0, 0, 0), UDim2.new(0.25, 0, 1, 0), true, "Main")
-CreateTabButton("Tab 2", UDim2.new(0.25, 0, 0, 0), UDim2.new(0.25, 0, 1, 0), false, "Tab2")
-CreateTabButton("Tab 3", UDim2.new(0.5, 0, 0, 0), UDim2.new(0.25, 0, 1, 0), false, "Tab3")
-CreateTabButton("Tab 4", UDim2.new(0.75, 0, 0, 0), UDim2.new(0.25, 0, 1, 0), false, "Tab4")
+CreateTabButton("Main", UDim2.new(0.01, 0, 0.15, 0), UDim2.new(0.23, 0, 0.75, 0), true, "Main")
+CreateTabButton("Tab 2", UDim2.new(0.26, 0, 0.15, 0), UDim2.new(0.23, 0, 0.75, 0), false, "Tab2")
+CreateTabButton("Tab 3", UDim2.new(0.51, 0, 0.15, 0), UDim2.new(0.23, 0, 0.75, 0), false, "Tab3")
+CreateTabButton("Tab 4", UDim2.new(0.76, 0, 0.15, 0), UDim2.new(0.23, 0, 0.75, 0), false, "Tab4")
 
 function UpdateTopTabs(tabName)
     for name, data in pairs(TopTabs) do
@@ -457,6 +457,84 @@ local function CreateColorPicker(parent, text, position, defaultColor)
         Text = "", AutoButtonColor = false, Parent = Container
     })
     Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = ColorBox})
+    
+    local Popup = Create("Frame", {
+        Name = "ColorPopup",
+        Size = UDim2.new(0, 140, 0, 80),
+        Position = UDim2.new(0, -14, 1, 4),
+        AnchorPoint = Vector2.new(1, 0),
+        BackgroundColor3 = Theme.Card,
+        BorderSizePixel = 0,
+        Visible = false,
+        ZIndex = 50,
+        Parent = Container
+    })
+    Create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = Popup})
+    Create("UIStroke", {Color = Theme.CardBorder, Thickness = 1, Parent = Popup})
+    
+    local presets = {
+        Color3.fromRGB(239, 68, 68),
+        Color3.fromRGB(249, 115, 22),
+        Color3.fromRGB(234, 179, 8),
+        Color3.fromRGB(34, 197, 94),
+        Color3.fromRGB(59, 130, 246),
+        Color3.fromRGB(139, 92, 246),
+        Color3.fromRGB(236, 72, 153),
+        Color3.fromRGB(255, 255, 255)
+    }
+    
+    for i, color in ipairs(presets) do
+        local col = (i - 1) % 4
+        local row = math.floor((i - 1) / 4)
+        local Preset = Create("TextButton", {
+            Name = "Preset"..i,
+            Size = UDim2.new(0, 28, 0, 28),
+            Position = UDim2.new(0, 6 + col * 32, 0, 6 + row * 32),
+            BackgroundColor3 = color,
+            BorderSizePixel = 0,
+            Text = "",
+            AutoButtonColor = false,
+            ZIndex = 51,
+            Parent = Popup
+        })
+        Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = Preset})
+        
+        Preset.MouseButton1Click:Connect(function()
+            ColorBox.BackgroundColor3 = color
+            Popup.Visible = false
+        end)
+        
+        Preset.MouseEnter:Connect(function()
+            Tween(Preset, 0.1, {Size = UDim2.new(0, 32, 0, 32)}):Play()
+        end)
+        Preset.MouseLeave:Connect(function()
+            Tween(Preset, 0.1, {Size = UDim2.new(0, 28, 0, 28)}):Play()
+        end)
+    end
+    
+    ColorBox.MouseButton1Click:Connect(function()
+        Popup.Visible = not Popup.Visible
+    end)
+    
+    UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 and Popup.Visible then
+            local mousePos = input.Position
+            local popupPos = Popup.AbsolutePosition
+            local popupSize = Popup.AbsoluteSize
+            local boxPos = ColorBox.AbsolutePosition
+            local boxSize = ColorBox.AbsoluteSize
+            
+            local inPopup = mousePos.X >= popupPos.X and mousePos.X <= popupPos.X + popupSize.X and
+                           mousePos.Y >= popupPos.Y and mousePos.Y <= popupPos.Y + popupSize.Y
+            local inBox = mousePos.X >= boxPos.X and mousePos.X <= boxPos.X + boxSize.X and
+                         mousePos.Y >= boxPos.Y and mousePos.Y <= boxPos.Y + boxSize.Y
+            
+            if not inPopup and not inBox then
+                Popup.Visible = false
+            end
+        end
+    end)
+    
     return Container
 end
 
