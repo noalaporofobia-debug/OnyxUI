@@ -458,16 +458,24 @@ local function CreateColorPicker(parent, text, position, defaultColor)
     })
     Create("UICorner", {CornerRadius = UDim.new(0, 6), Parent = ColorBox})
     
+    -- Buscar la página padre (TabPage) para crear el popup ahí
+    local Page = parent
+    while Page and not TabPages[Page.Name] do
+        Page = Page.Parent
+    end
+    if not Page or not TabPages[Page.Name] then
+        Page = parent
+    end
+    
     local Popup = Create("Frame", {
-        Name = "ColorPopup",
+        Name = "ColorPopup_"..text:gsub(" ", ""),
         Size = UDim2.new(0, 140, 0, 80),
-        Position = UDim2.new(0, -14, 1, 4),
-        AnchorPoint = Vector2.new(1, 0),
+        Position = UDim2.new(0, 0, 0, 0),
         BackgroundColor3 = Theme.Card,
         BorderSizePixel = 0,
         Visible = false,
         ZIndex = 50,
-        Parent = Container
+        Parent = Page
     })
     Create("UICorner", {CornerRadius = UDim.new(0, 8), Parent = Popup})
     Create("UIStroke", {Color = Theme.CardBorder, Thickness = 1, Parent = Popup})
@@ -513,7 +521,14 @@ local function CreateColorPicker(parent, text, position, defaultColor)
     end
     
     ColorBox.MouseButton1Click:Connect(function()
-        Popup.Visible = not Popup.Visible
+        if Popup.Visible then
+            Popup.Visible = false
+            return
+        end
+        local boxAbsPos = ColorBox.AbsolutePosition
+        local pageAbsPos = Page.AbsolutePosition
+        Popup.Position = UDim2.new(0, boxAbsPos.X - pageAbsPos.X - 14, 0, boxAbsPos.Y - pageAbsPos.Y + 24)
+        Popup.Visible = true
     end)
     
     UserInputService.InputBegan:Connect(function(input)
